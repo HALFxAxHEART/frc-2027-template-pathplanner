@@ -1,0 +1,176 @@
+// ============================================================================
+//  build.gradle  -  the "recipe" Gradle uses to compile and deploy this robot
+// ----------------------------------------------------------------------------
+//  STUDENTS: You almost never edit this file. It tells the build system:
+//    * which WPILib / AdvantageKit versions to use,
+//    * that we deploy to a "SystemCore" (the new FRC controller / our Pi clone),
+//    * and how to bundle everything into one deployable .jar file.
+//  It is based on the official AdvantageKit 2027 skeleton, adjusted for our
+//  package name (frc.robot) and team number (5090).
+// ============================================================================
+
+plugins {
+    id "java"
+    id "org.wpilib.GradleRIO" version "2027.0.0-alpha-6"
+    id "com.gradleup.shadow" version "9.3.0"
+    id "com.peterabeles.gversion" version "1.10"       // stamps build info into BuildConstants.java
+    id "com.diffplug.spotless" version "8.6.0"          // auto-formats our code
+}
+
+java {
+    // WPILib 2027 runs on Java 25.
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+// The class with main(). Ours lives in frc/robot/Main.java.
+def ROBOT_MAIN_CLASS = "frc.robot.Main"
+
+// Where the compiled code gets sent when you run "Deploy Robot Code".
+deploy {
+    targets {
+        systemcore(getTargetTypeClass('SystemCore')) {
+            team = project.wpilib.getTeamNumber()   // reads 5090 from .wpilib/wpilib_preferences.json
+            useDefaultSystemcoreHostName()
+            debug = project.wpilib.getDebugOrDefault(false)
+
+            artifacts {
+                wpilibJava(getArtifactTypeClass('WPILibJavaArtifact')) {
+                }
+
+                // Files in src/main/deploy get copied to the robot too (e.g. PathPlanner paths).
+                wpilibStaticFileDeploy(getArtifactTypeClass('FileTreeArtifact')) {
+                    files = project.fileTree('src/main/deploy')
+                    directory = '/home/systemcore/deploy'
+                    deleteOldFiles = false
+                }
+            }
+        }
+    }
+}
+
+def deployArtifact = deploy.targets.systemcore.artifacts.wpilibJava
+
+wpi.java.debugJni = false
+def includeDesktopSupport = true
+
+// AdvantageKit "replay" helper task (advanced feature, safe to ignore for now).
+task(replayWatch, type: JavaExec) {
+    mainClass = "org.littletonrobotics.junction.ReplayWatch"
+    classpath = sourceSets.main.runtimeClasspath
+}
+
+// The libraries this project depends on (WPILib itself + our vendor libraries).
+dependencies {
+    annotationProcessor wpi.java.deps.wpilibAnnotations()
+    implementation wpi.java.deps.wpilib()
+    implementation wpi.java.vendor.java()
+
+    systemcoreDebug wpi.java.deps.wpilibJniDebug(wpi.platforms.systemcore)
+    systemcoreDebug wpi.java.vendor.jniDebug(wpi.platforms.systemcore)
+
+    systemcoreRelease wpi.java.deps.wpilibJniRelease(wpi.platforms.systemcore)
+    systemcoreRelease wpi.java.vendor.jniRelease(wpi.platforms.systemcore)
+
+    nativeDebug wpi.java.deps.wpilibJniDebug(wpi.platforms.desktop)
+    nativeDebug wpi.java.vendor.jniDebug(wpi.platforms.desktop)
+    simulationDebug wpi.sim.enableDebug()
+
+    nativeRelease wpi.java.deps.wpilibJniRelease(wpi.platforms.desktop)
+    nativeRelease wpi.java.vendor.jniRelease(wpi.platforms.desktop)
+    simulationRelease wpi.sim.enableRelease()
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // AdvantageKit's @AutoLog annotation processor (auto-generates logging code).
+    def akitJson = new groovy.json.JsonSlurper().parseText(new File(projectDir.getAbsolutePath() + "/vendordeps/AdvantageKit.json").text)
+    annotationProcessor "org.littletonrobotics.akit:akit-autolog:$akitJson.version"
+}
+
+test {
+    useJUnitPlatform()
+    systemProperty 'junit.jupiter.extensions.autodetection.enabled', 'true'
+}
+
+// The sim GUI is OFF by default because AdvantageKit log replay needs HAL sim
+// extensions disabled. You still get full telemetry in AdvantageScope.
+wpi.sim.addGui().defaultEnabled = false
+wpi.sim.addDriverstation()
+
+// Bundle all libraries into one "fat jar" so the robot has everything it needs.
+shadowJar {
+    mergeServiceFiles()
+    from('src') { into 'backup/src' }
+    from('vendordeps') { into 'backup/vendordeps' }
+    from('build.gradle') { into 'backup' }
+    manifest org.wpilib.gradlerio.GradleRIOPlugin.javaManifest(ROBOT_MAIN_CLASS)
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+deployArtifact.jarTask = shadowJar
+wpi.java.configureExecutableTasks(shadowJar)
+wpi.java.configureTestTasks(test)
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs.add '-XDstringConcat=inline'
+}
+
+// Generates frc/robot/BuildConstants.java with the git SHA / build date, which
+// Robot.java records into the log so every log knows exactly which code produced it.
+project.compileJava.dependsOn(createVersionFile)
+gversion {
+    srcDir       = "src/main/java/"
+    classPackage = "frc.robot"
+    className    = "BuildConstants"
+    dateFormat   = "yyyy-MM-dd HH:mm:ss z"
+    timeZone     = "America/New_York"
+    indent       = "  "
+}
+
+// Auto-commit working changes when deploying from an "event" branch (competition safety).
+task(eventDeploy) {
+    doLast {
+        if (project.gradle.startParameter.taskNames.any({ it.toLowerCase().contains("deploy") })) {
+            def branchPrefix = "event"
+            def branch = 'git branch --show-current'.execute().text.trim()
+            def commitMessage = "Update at '${new Date().toString()}'"
+            if (branch.startsWith(branchPrefix)) {
+                exec { workingDir(projectDir); executable 'git'; args 'add', '-A' }
+                exec { workingDir(projectDir); executable 'git'; args 'commit', '-m', commitMessage; ignoreExitValue = true }
+                println "Committed to branch: '$branch'"
+            } else {
+                println "Not on an event branch, skipping commit"
+            }
+        } else {
+            println "Not running deploy task, skipping commit"
+        }
+    }
+}
+createVersionFile.dependsOn(eventDeploy)
+
+// Auto-formatting so all student code stays tidy and consistent.
+project.compileJava.dependsOn(spotlessApply)
+spotless {
+    java {
+        target fileTree(".") { include "**/*.java"; exclude "**/build/**", "**/build-*/**" }
+        toggleOffOn()
+        googleJavaFormat()
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    groovyGradle {
+        target fileTree(".") { include "**/*.gradle"; exclude "**/build/**", "**/build-*/**" }
+        greclipse()
+        indentWithSpaces(4)
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    format "misc", {
+        target fileTree(".") { include "**/*.md", "**/.gitignore"; exclude "**/build/**", "**/build-*/**" }
+        trimTrailingWhitespace()
+        indentWithSpaces(2)
+        endWithNewline()
+    }
+}

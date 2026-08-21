@@ -1,0 +1,50 @@
+// ============================================================================
+//  VisionIO.java = the IO INTERFACE for one camera.
+//    Lists what we read from a camera each loop: is it connected, the angle to the
+//    best target (tx/ty), and any AprilTag pose estimates it produced. Same IO-layer
+//    idea as the drivetrain -- it lets us swap a real Limelight for a fake one.
+//  (Logic below is the official AdvantageKit vision template, unchanged.)
+// ============================================================================
+// Copyright (c) 2021-2026 Littleton Robotics
+// http://github.com/Mechanical-Advantage
+//
+// Use of this source code is governed by a BSD
+// license that can be found in the LICENSE file
+// at the root directory of this project.
+
+package frc.robot.subsystems.vision;
+
+import org.littletonrobotics.junction.AutoLog;
+import org.wpilib.math.geometry.Pose3d;
+import org.wpilib.math.geometry.Rotation2d;
+
+public interface VisionIO {
+  @AutoLog
+  public static class VisionIOInputs {
+    public boolean connected = false;
+    public TargetObservation latestTargetObservation =
+        new TargetObservation(Rotation2d.kZero, Rotation2d.kZero);
+    public PoseObservation[] poseObservations = new PoseObservation[0];
+    public int[] tagIds = new int[0];
+  }
+
+  /** Represents the angle to a simple target, not used for pose estimation. */
+  public static record TargetObservation(Rotation2d tx, Rotation2d ty) {}
+
+  /** Represents a robot pose sample used for pose estimation. */
+  public static record PoseObservation(
+      double timestamp,
+      Pose3d pose,
+      double ambiguity,
+      int tagCount,
+      double averageTagDistance,
+      PoseObservationType type) {}
+
+  public static enum PoseObservationType {
+    MEGATAG_1,
+    MEGATAG_2,
+    PHOTONVISION
+  }
+
+  public default void updateInputs(VisionIOInputs inputs) {}
+}
