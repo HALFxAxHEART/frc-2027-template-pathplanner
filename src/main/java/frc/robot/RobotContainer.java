@@ -35,6 +35,10 @@ import frc.robot.subsystems.vision.VisionConstants;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOLimelight;
 // === MECHANISM IMPORTS (mechanism branches insert imports here) ===
+import frc.robot.subsystems.shooter.Shooter;
+import frc.robot.subsystems.shooter.ShooterIO;
+import frc.robot.subsystems.shooter.ShooterIOSim;
+import frc.robot.subsystems.shooter.ShooterIOTalonFX;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 import org.wpilib.math.geometry.Pose2d;
 import org.wpilib.math.geometry.Rotation2d;
@@ -52,6 +56,8 @@ public class RobotContainer {
   private final Vision vision;
 
   // === MECHANISM FIELDS (mechanism branches insert fields here) ===
+  private final CommandXboxController operator = new CommandXboxController(1);
+  private final Shooter shooter;
 
   // The driver's Xbox controller, plugged into USB port 0 in the Driver Station.
   private final CommandXboxController controller = new CommandXboxController(0);
@@ -115,6 +121,8 @@ public class RobotContainer {
     }
 
     // === MECHANISM SETUP (mechanism branches insert subsystem creation here) ===
+    // Flywheel shooter: real motor on the robot, physics model in sim, empty in replay.
+    shooter = new Shooter(Constants.currentMode == Constants.Mode.REAL ? new ShooterIOTalonFX() : Constants.currentMode == Constants.Mode.SIM ? new ShooterIOSim() : new ShooterIO() {});
 
     // ---- 2. Autonomous chooser ----
     // AutoBuilder.buildAutoChooser() finds any PathPlanner autos in
@@ -185,6 +193,9 @@ public class RobotContainer {
                 .ignoringDisable(true));
 
     // === MECHANISM BINDINGS (mechanism branches insert operator buttons here) ===
+    // Operator controller (port 1): hold RIGHT BUMPER to spin the flywheel to 3000 RPM.
+    shooter.setDefaultCommand(shooter.stop());
+    operator.rightBumper().whileTrue(shooter.runAtRpm(3000));
   }
 
   /** Robot.java calls this to get the command to run during autonomous. */
