@@ -18,16 +18,24 @@ point:
 
 ## Mechanism branches (game-specific robots)
 
-The `main` branch is just the drivetrain + vision + autonomy. Game mechanisms
-live on their own branches so students can check out the one for their game:
+The `main` branch is the drivetrain + vision + autonomy only. Each game mechanism
+is its own branch — check out the one that matches your game. Every branch keeps
+everything from `main` and adds one mechanism, wired to an **operator controller
+(USB port 1)** and runnable in simulation. All heavily commented and modeled on
+real FRC seasons.
 
-- **`shooter`** — adds a flywheel shooter (a "shooter game" robot).
-- **`pick-and-place`** — adds an elevator + gripper (a "pick-and-place" robot).
+**Shooter-style games:**
+- **`shooter-flywheel`** — a spin-up flywheel shooter (2024 Crescendo-style).
+- **`shooter-turret`** — a rotating turret that auto-aims with the Limelight, plus the flywheel (2024/2022-style).
+- **`shooter-dumper`** — the simplest scorer: a tipping bucket that dumps game pieces.
 
-*(More mechanism archetypes — arm-on-elevator, double-jointed arm, turret, etc. —
-are being added; see the repo branches.)*
+**Pick-and-place games:**
+- **`pickplace-elevator`** — an elevator + gripper (2025 Reefscape-style).
+- **`pickplace-elevator-arm`** — an elevator with a pivoting arm on top + gripper (reach up AND out, 2025-style).
+- **`pickplace-double-arm`** — a double-jointed (shoulder + elbow) arm + gripper (2023 Charged Up-style).
 
-Switch branches in VS Code, or: `git checkout shooter`.
+Switch branches in VS Code, or e.g. `git checkout shooter-turret`. Each branch's
+README has its exact controls.
 
 ---
 
