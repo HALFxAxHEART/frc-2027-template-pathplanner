@@ -35,6 +35,14 @@ import frc.robot.subsystems.vision.VisionConstants;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOLimelight;
 // === MECHANISM IMPORTS (mechanism branches insert imports here) ===
+import frc.robot.subsystems.turret.Turret;
+import frc.robot.subsystems.turret.TurretIO;
+import frc.robot.subsystems.turret.TurretIOSim;
+import frc.robot.subsystems.turret.TurretIOTalonFX;
+import frc.robot.subsystems.shooter.Shooter;
+import frc.robot.subsystems.shooter.ShooterIO;
+import frc.robot.subsystems.shooter.ShooterIOSim;
+import frc.robot.subsystems.shooter.ShooterIOTalonFX;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 import org.wpilib.math.geometry.Pose2d;
 import org.wpilib.math.geometry.Rotation2d;
@@ -52,6 +60,9 @@ public class RobotContainer {
   private final Vision vision;
 
   // === MECHANISM FIELDS (mechanism branches insert fields here) ===
+  private final CommandXboxController operator = new CommandXboxController(1);
+  private final Turret turret;
+  private final Shooter shooter;
 
   // The driver's Xbox controller, plugged into USB port 0 in the Driver Station.
   private final CommandXboxController controller = new CommandXboxController(0);
@@ -115,6 +126,8 @@ public class RobotContainer {
     }
 
     // === MECHANISM SETUP (mechanism branches insert subsystem creation here) ===
+    turret = new Turret(Constants.currentMode == Constants.Mode.REAL ? new TurretIOTalonFX() : Constants.currentMode == Constants.Mode.SIM ? new TurretIOSim() : new TurretIO() {});
+    shooter = new Shooter(Constants.currentMode == Constants.Mode.REAL ? new ShooterIOTalonFX() : Constants.currentMode == Constants.Mode.SIM ? new ShooterIOSim() : new ShooterIO() {});
 
     // ---- 2. Autonomous chooser ----
     // AutoBuilder.buildAutoChooser() finds any PathPlanner autos in
@@ -185,6 +198,11 @@ public class RobotContainer {
                 .ignoringDisable(true));
 
     // === MECHANISM BINDINGS (mechanism branches insert operator buttons here) ===
+    // Operator: RB = spin flywheel; hold X = auto-aim turret with the Limelight (camera 0).
+    shooter.setDefaultCommand(shooter.stop());
+    turret.setDefaultCommand(turret.aimTo(0.0));
+    operator.rightBumper().whileTrue(shooter.runAtRpm(3000));
+    operator.x().whileTrue(turret.aimWithVision(() -> vision.getTargetX(0).getDegrees()));
   }
 
   /** Robot.java calls this to get the command to run during autonomous. */

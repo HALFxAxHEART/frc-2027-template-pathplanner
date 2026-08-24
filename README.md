@@ -92,3 +92,15 @@ IO-layer pattern, and REAL/SIM/REPLAY).
 > The drivetrain numbers in `TunerConstants.java` are a working example from a
 > real robot (Team 5090's "Stingray"). Replace them with your robot's values —
 > or regenerate the file with CTRE's Tuner X swerve generator.
+
+
+---
+
+## This branch: `shooter-turret`
+
+Adds a **turret + flywheel shooter** (2024/2022-style auto-aim). Operator (port 1): **Right Bumper** spins the flywheel; hold **X** to auto-aim the turret using Limelight camera 0. The turret centers itself by default.
+
+Everything from `main` (swerve + Limelight vision + autonomy + logging) is
+still here; this branch just adds the mechanism above. Run it in simulation
+(*WPILib: Simulate Robot Code*) and watch the `Turret/...`
+values in AdvantageScope.
