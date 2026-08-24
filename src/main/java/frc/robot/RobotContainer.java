@@ -35,6 +35,10 @@ import frc.robot.subsystems.vision.VisionConstants;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOLimelight;
 // === MECHANISM IMPORTS (mechanism branches insert imports here) ===
+import frc.robot.subsystems.dumper.Dumper;
+import frc.robot.subsystems.dumper.DumperIO;
+import frc.robot.subsystems.dumper.DumperIOSim;
+import frc.robot.subsystems.dumper.DumperIOTalonFX;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 import org.wpilib.math.geometry.Pose2d;
 import org.wpilib.math.geometry.Rotation2d;
@@ -52,6 +56,8 @@ public class RobotContainer {
   private final Vision vision;
 
   // === MECHANISM FIELDS (mechanism branches insert fields here) ===
+  private final CommandXboxController operator = new CommandXboxController(1);
+  private final Dumper dumper;
 
   // The driver's Xbox controller, plugged into USB port 0 in the Driver Station.
   private final CommandXboxController controller = new CommandXboxController(0);
@@ -115,6 +121,7 @@ public class RobotContainer {
     }
 
     // === MECHANISM SETUP (mechanism branches insert subsystem creation here) ===
+    dumper = new Dumper(Constants.currentMode == Constants.Mode.REAL ? new DumperIOTalonFX() : Constants.currentMode == Constants.Mode.SIM ? new DumperIOSim() : new DumperIO() {});
 
     // ---- 2. Autonomous chooser ----
     // AutoBuilder.buildAutoChooser() finds any PathPlanner autos in
@@ -185,6 +192,9 @@ public class RobotContainer {
                 .ignoringDisable(true));
 
     // === MECHANISM BINDINGS (mechanism branches insert operator buttons here) ===
+    // Operator: bucket holds pieces by default; hold RIGHT BUMPER to tip and dump them out.
+    dumper.setDefaultCommand(dumper.stow());
+    operator.rightBumper().whileTrue(dumper.dump());
   }
 
   /** Robot.java calls this to get the command to run during autonomous. */
