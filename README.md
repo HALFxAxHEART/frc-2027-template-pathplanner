@@ -92,3 +92,15 @@ IO-layer pattern, and REAL/SIM/REPLAY).
 > The drivetrain numbers in `TunerConstants.java` are a working example from a
 > real robot (Team 5090's "Stingray"). Replace them with your robot's values —
 > or regenerate the file with CTRE's Tuner X swerve generator.
+
+
+---
+
+## This branch: `pickplace-double-arm`
+
+Adds a **double-jointed arm + gripper** (2023 Charged Up-style shoulder+elbow reaching). Operator (port 1): **A/B/Y** move to stow/pickup/score poses; hold **LB** intake, **RB** eject.
+
+Everything from `main` (swerve + Limelight vision + autonomy + logging) is
+still here; this branch just adds the mechanism above. Run it in simulation
+(*WPILib: Simulate Robot Code*) and watch the `Doublearm/...`
+values in AdvantageScope.

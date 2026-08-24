@@ -35,6 +35,14 @@ import frc.robot.subsystems.vision.VisionConstants;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOLimelight;
 // === MECHANISM IMPORTS (mechanism branches insert imports here) ===
+import frc.robot.subsystems.doublearm.ArmJointIO;
+import frc.robot.subsystems.doublearm.ArmJointIOSim;
+import frc.robot.subsystems.doublearm.ArmJointIOTalonFX;
+import frc.robot.subsystems.doublearm.DoubleArm;
+import frc.robot.subsystems.gripper.Gripper;
+import frc.robot.subsystems.gripper.GripperIO;
+import frc.robot.subsystems.gripper.GripperIOSim;
+import frc.robot.subsystems.gripper.GripperIOTalonFX;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 import org.wpilib.math.geometry.Pose2d;
 import org.wpilib.math.geometry.Rotation2d;
@@ -52,6 +60,9 @@ public class RobotContainer {
   private final Vision vision;
 
   // === MECHANISM FIELDS (mechanism branches insert fields here) ===
+  private final CommandXboxController operator = new CommandXboxController(1);
+  private final DoubleArm doubleArm;
+  private final Gripper gripper;
 
   // The driver's Xbox controller, plugged into USB port 0 in the Driver Station.
   private final CommandXboxController controller = new CommandXboxController(0);
@@ -115,6 +126,20 @@ public class RobotContainer {
     }
 
     // === MECHANISM SETUP (mechanism branches insert subsystem creation here) ===
+    // Double-jointed arm: a SHOULDER joint (id 11) and an ELBOW joint (id 12).
+    doubleArm =
+        new DoubleArm(
+            Constants.currentMode == Constants.Mode.REAL
+                ? new ArmJointIOTalonFX(11, 120.0, 50.0, 0.5)
+                : Constants.currentMode == Constants.Mode.SIM
+                    ? new ArmJointIOSim(120.0, 0.7, 4.0, 0.5)
+                    : new ArmJointIO() {},
+            Constants.currentMode == Constants.Mode.REAL
+                ? new ArmJointIOTalonFX(12, 90.0, 40.0, 0.3)
+                : Constants.currentMode == Constants.Mode.SIM
+                    ? new ArmJointIOSim(90.0, 0.5, 2.0, 0.3)
+                    : new ArmJointIO() {});
+    gripper = new Gripper(Constants.currentMode == Constants.Mode.REAL ? new GripperIOTalonFX() : Constants.currentMode == Constants.Mode.SIM ? new GripperIOSim() : new GripperIO() {});
 
     // ---- 2. Autonomous chooser ----
     // AutoBuilder.buildAutoChooser() finds any PathPlanner autos in
@@ -185,6 +210,12 @@ public class RobotContainer {
                 .ignoringDisable(true));
 
     // === MECHANISM BINDINGS (mechanism branches insert operator buttons here) ===
+    // Operator: A/B/Y move the whole arm to stow/pickup/score poses; LB intake, RB eject.
+    operator.a().onTrue(doubleArm.goToPose(DoubleArm.STOW));
+    operator.b().onTrue(doubleArm.goToPose(DoubleArm.PICKUP));
+    operator.y().onTrue(doubleArm.goToPose(DoubleArm.SCORE_HIGH));
+    operator.leftBumper().whileTrue(gripper.intake());
+    operator.rightBumper().whileTrue(gripper.eject());
   }
 
   /** Robot.java calls this to get the command to run during autonomous. */
