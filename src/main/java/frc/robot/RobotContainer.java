@@ -35,6 +35,18 @@ import frc.robot.subsystems.vision.VisionConstants;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOLimelight;
 // === MECHANISM IMPORTS (mechanism branches insert imports here) ===
+import frc.robot.subsystems.elevator.Elevator;
+import frc.robot.subsystems.elevator.ElevatorIO;
+import frc.robot.subsystems.elevator.ElevatorIOSim;
+import frc.robot.subsystems.elevator.ElevatorIOTalonFX;
+import frc.robot.subsystems.arm.Arm;
+import frc.robot.subsystems.arm.ArmIO;
+import frc.robot.subsystems.arm.ArmIOSim;
+import frc.robot.subsystems.arm.ArmIOTalonFX;
+import frc.robot.subsystems.gripper.Gripper;
+import frc.robot.subsystems.gripper.GripperIO;
+import frc.robot.subsystems.gripper.GripperIOSim;
+import frc.robot.subsystems.gripper.GripperIOTalonFX;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 import org.wpilib.math.geometry.Pose2d;
 import org.wpilib.math.geometry.Rotation2d;
@@ -52,6 +64,10 @@ public class RobotContainer {
   private final Vision vision;
 
   // === MECHANISM FIELDS (mechanism branches insert fields here) ===
+  private final CommandXboxController operator = new CommandXboxController(1);
+  private final Elevator elevator;
+  private final Arm arm;
+  private final Gripper gripper;
 
   // The driver's Xbox controller, plugged into USB port 0 in the Driver Station.
   private final CommandXboxController controller = new CommandXboxController(0);
@@ -115,6 +131,9 @@ public class RobotContainer {
     }
 
     // === MECHANISM SETUP (mechanism branches insert subsystem creation here) ===
+    elevator = new Elevator(Constants.currentMode == Constants.Mode.REAL ? new ElevatorIOTalonFX() : Constants.currentMode == Constants.Mode.SIM ? new ElevatorIOSim() : new ElevatorIO() {});
+    arm = new Arm(Constants.currentMode == Constants.Mode.REAL ? new ArmIOTalonFX() : Constants.currentMode == Constants.Mode.SIM ? new ArmIOSim() : new ArmIO() {});
+    gripper = new Gripper(Constants.currentMode == Constants.Mode.REAL ? new GripperIOTalonFX() : Constants.currentMode == Constants.Mode.SIM ? new GripperIOSim() : new GripperIO() {});
 
     // ---- 2. Autonomous chooser ----
     // AutoBuilder.buildAutoChooser() finds any PathPlanner autos in
@@ -185,6 +204,12 @@ public class RobotContainer {
                 .ignoringDisable(true));
 
     // === MECHANISM BINDINGS (mechanism branches insert operator buttons here) ===
+    // Operator presets move the elevator AND arm together; hold LB = intake, RB = eject.
+    operator.a().onTrue(elevator.goToHeight(Elevator.STOW).alongWith(arm.goToAngle(Arm.STOW)));
+    operator.b().onTrue(elevator.goToHeight(Elevator.LOW).alongWith(arm.goToAngle(Arm.INTAKE)));
+    operator.y().onTrue(elevator.goToHeight(Elevator.HIGH).alongWith(arm.goToAngle(Arm.SCORE)));
+    operator.leftBumper().whileTrue(gripper.intake());
+    operator.rightBumper().whileTrue(gripper.eject());
   }
 
   /** Robot.java calls this to get the command to run during autonomous. */
